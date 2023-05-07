@@ -23,7 +23,7 @@ class FactBase(BaseModel):
 
 class FactCreate(FactBase):
     tags: Optional[List[TagCreate]]
-    related: Optional[List['FactBase']]
+    related: Optional[List["FactBase"]]
 
 
 class FactPatch(BaseModel):
@@ -69,7 +69,9 @@ async def get_facts(
 
     :returns: All the facts, paginated.
     """
-    results: List[FactModel] = await FactModel.get_all_async(session=session, offset=offset, limit=limit)
+    results: List[FactModel] = await FactModel.get_all_async(
+        session=session, offset=offset, limit=limit
+    )
     db_facts = []
     for db_fact in results:
         db_fact.related = await db_fact.related_facts_async(session)
@@ -89,7 +91,9 @@ async def get_fact(
     :param fact_id: the id of the fact to get
     :returns: The details of the fact.
     """
-    db_fact: FactModel = await FactModel.get_one_async(session=session, object_id=fact_id)
+    db_fact: FactModel = await FactModel.get_one_async(
+        session=session, object_id=fact_id
+    )
     db_fact.related = await db_fact.related_facts_async(session)
     if db_fact is None:
         raise HTTPException(
@@ -167,9 +171,13 @@ async def edit_fact(
     :returns: The modified fact
     """
     update_data = new_fact_data.dict(exclude_unset=True)
-    original_data = await get_fact(fact_id=fact_id, current_user=current_active_user, session=session)
+    original_data = await get_fact(
+        fact_id=fact_id, current_user=current_active_user, session=session
+    )
     new_model = FactBase(**original_data).copy(update=update_data)
-    new_fact = await FactModel.update(session=session, object_id=fact_id, **new_model.dict())
+    new_fact = await FactModel.update(
+        session=session, object_id=fact_id, **new_model.dict()
+    )
     return new_fact
 
 
@@ -193,7 +201,9 @@ async def assign_tag_to_fact(
         tag = await TagModel.create_async(session=session, name=tag_name)
     await fact.assign_tag_async(session=session, tag_id=tag.id)
 
-    fact = await get_fact(fact_id=fact_id, current_user=current_active_user, session=session)
+    fact = await get_fact(
+        fact_id=fact_id, current_user=current_active_user, session=session
+    )
     return fact
 
 
@@ -217,8 +227,11 @@ async def remove_tag_from_fact(
         raise HTTPException(status_code=404, detail=f"Tag '{tag_name}' doesn't exist.")
     await fact.remove_tag_async(session=session, tag_id=tag.id)
 
-    fact = await get_fact(fact_id=fact_id, current_user=current_active_user, session=session)
+    fact = await get_fact(
+        fact_id=fact_id, current_user=current_active_user, session=session
+    )
     return fact
+
 
 @router.put("/{fact_id}/related/", response_model=FactRead)
 async def assign_related_fact(
@@ -237,8 +250,12 @@ async def assign_related_fact(
     :returns: The modified fact
     """
     fact: FactModel = await FactModel.get_one_async(session=session, object_id=fact_id)
-    await fact.assign_related_fact_async(session=session, fact_id=related_fact_id, relationship=relationship)
-    fact = await get_fact(fact_id=fact_id, current_user=current_active_user, session=session)
+    await fact.assign_related_fact_async(
+        session=session, fact_id=related_fact_id, relationship=relationship
+    )
+    fact = await get_fact(
+        fact_id=fact_id, current_user=current_active_user, session=session
+    )
     return fact
 
 
@@ -258,8 +275,12 @@ async def remove_related_fact(
     :returns: The modified fact
     """
     fact: FactModel = await FactModel.get_one_async(session=session, object_id=fact_id)
-    await fact.remove_related_fact_async(session=session, fact_id=related_fact_id, relationship=relationship)
-    fact = await get_fact(fact_id=fact_id, current_user=current_active_user, session=session)
+    await fact.remove_related_fact_async(
+        session=session, fact_id=related_fact_id, relationship=relationship
+    )
+    fact = await get_fact(
+        fact_id=fact_id, current_user=current_active_user, session=session
+    )
     return fact
 
 

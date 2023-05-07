@@ -17,16 +17,16 @@ from flashcards_core.database import Base, Deck, Card, Tag, Fact, Review
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "users"
-    
+
     @classmethod
-    async def get_by_name(cls, session: Session, username: str) -> 'User':
+    async def get_by_name(cls, session: Session, username: str) -> "User":
         """
         Find a user by username. Usernames are unique.
         """
         return session.query(cls).filter(cls.username == username).first()
 
     @classmethod
-    async def get_by_email(cls, session: Session, email: str) -> 'User':
+    async def get_by_email(cls, session: Session, email: str) -> "User":
         """
         Find a user by email. Emails are unique.
         """
@@ -49,10 +49,12 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
             .limit(limit)
         )
         deck_owner_pairs = await session.execute(select)
-        return list([
-            await Deck.get_one_async(session=session, object_id=pair.deck_id)
-            for pair in deck_owner_pairs
-        ])
+        return list(
+            [
+                await Deck.get_one_async(session=session, object_id=pair.deck_id)
+                for pair in deck_owner_pairs
+            ]
+        )
 
     async def owns_deck(self, session: Session, deck_id: UUID) -> bool:
         """
@@ -94,7 +96,6 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
         session.refresh(self)
 
 
-
 #: Associative table for Decks and Users
 DeckOwner = Table(
     "deck_owners",
@@ -102,7 +103,6 @@ DeckOwner = Table(
     Column("deck_id", GUID(), ForeignKey(Deck.id), primary_key=True),
     Column("owner_id", GUID(), ForeignKey(User.id), nullable=False),
 )
-
 
 
 DATABASE_URL = "sqlite+aiosqlite:///./test.db"

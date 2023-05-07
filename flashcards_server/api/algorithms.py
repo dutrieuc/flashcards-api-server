@@ -16,8 +16,8 @@ router = APIRouter(
 
 @router.get("/", response_model=List[str])
 def get_algorithms(
-    offset: int = 0, 
-    limit: int = 100, 
-    current_user: UserRead = Depends(current_active_user)
+    offset: int = 0,
+    limit: int = 100,
+    current_user: UserRead = Depends(current_active_user),
 ):
     return get_available_schedulers()

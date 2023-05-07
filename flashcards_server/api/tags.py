@@ -65,6 +65,7 @@ async def create_tag(
     new_tag = await TagModel.create_async(session=session, **tag.dict())
     return new_tag
 
+
 @router.patch("/{tag_id}", response_model=TagRead)
 async def edit_tag(
     tag: TagCreate,
