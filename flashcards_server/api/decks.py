@@ -27,10 +27,12 @@ class DeckCreate(DeckBase):
 
 
 class DeckPatch(DeckCreate):
-    name: Optional[str]
-    description: Optional[str]
-    algorithm: Optional[str]
-    state: Optional[dict]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    algorithm: Optional[str] = None
+    state: Optional[dict] = None
+    parameters: Optional[dict] = None
+    tags: Optional[List[TagCreate]] = None
 
 
 class DeckRead(DeckBase):
@@ -134,14 +136,12 @@ async def edit_deck(
     :param new_deck_data: the new details of the deck. Can be partial.
     :returns: The modified deck. Cards list not included, use ``/deck/<uuid>/cards``
     """
-    deck_to_edit = await valid_deck(session=session, user=current_user, deck_id=deck_id)
-
-    update_data = new_deck_data.dict(exclude_unset=True)
+    await valid_deck(session=session, user=current_user, deck_id=deck_id)
+    update_data = new_deck_data.model_dump(exclude_none=True)
     tags = update_data.pop("tags", [])
 
-    new_deck_model = DeckRead(**vars(deck_to_edit)).copy(update=update_data)
-    new_deck = DeckModel.update(
-        session=session, object_id=deck_id, **new_deck_model.dict()
+    new_deck: DeckModel = await DeckModel.update_async(
+        session=session, object_id=deck_id, **update_data
     )
 
     if tags:
