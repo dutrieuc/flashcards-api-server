@@ -2,7 +2,7 @@ from typing import List
 
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from flashcards_server.database import (
@@ -22,10 +22,9 @@ class TagCreate(TagBase):
 
 
 class TagRead(TagBase):
-    id: UUID
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    id: UUID
 
 
 router = APIRouter(
@@ -65,6 +64,7 @@ async def create_tag(
     new_tag = await TagModel.create_async(session=session, **tag.dict())
     return new_tag
 
+
 @router.patch("/{tag_id}", response_model=TagRead)
 async def edit_tag(
     tag: TagCreate,
@@ -72,7 +72,6 @@ async def edit_tag(
     current_user: UserRead = Depends(current_active_user),  # to protect endpoint
     session: Session = Depends(get_async_session),
 ):
-    db_tag = await TagModel.get_one_async(session=session, object_id=tag_id)
     return await TagModel.update_async(session=session, object_id=tag_id, **tag.dict())
 
 

@@ -1,4 +1,5 @@
 import importlib.metadata
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -8,13 +9,20 @@ from flashcards_server.users import auth_backend, fastapi_users
 from flashcards_server.schemas import UserRead, UserCreate, UserUpdate
 
 
-__version__ = importlib.metadata.version('flashcards_server')
+__version__ = importlib.metadata.version("flashcards_server")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await create_db_and_tables()
+    yield
 
 
 # Create the FastAPI app
 app = FastAPI(
     title="Flashcards API",
     description="API Docs for flashcards-server",
+    lifespan=lifespan,
     version=__version__,
 )
 
@@ -35,24 +43,25 @@ app.include_router(decks_router)
 app.include_router(facts_router)
 app.include_router(tags_router)
 app.include_router(study_router)
-app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"])  # Prefix needed for OpenAPI
-app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), tags=["auth"])
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
+)  # Prefix needed for OpenAPI
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate), tags=["auth"]
+)
 app.include_router(fastapi_users.get_reset_password_router(), tags=["auth"])
 app.include_router(fastapi_users.get_verify_router(UserRead), tags=["auth"])
-app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
-
-
-@app.on_event("startup")
-async def on_startup():
-    # Not needed if you setup a migration system like Alembic
-    await create_db_and_tables()
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
 
 
 # Default endpoint
 @app.get("/")
 async def root():
     return {"message": "Hello!"}
-
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

@@ -3,7 +3,7 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from flashcards_server.database import (
     get_async_session,
@@ -34,13 +34,12 @@ class DeckPatch(DeckCreate):
 
 
 class DeckRead(DeckBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     parameters: dict
     state: dict
     tags: List[TagRead]
-
-    class Config:
-        orm_mode = True
 
 
 async def valid_deck(
@@ -106,7 +105,7 @@ async def create_deck(
     :param deck: the details of the new deck.
     :returns: The new deck
     """
-    deck_data = deck.dict()
+    deck_data = deck.model_dump()
     tags = deck_data.pop("tags", [])
     new_deck: DeckModel = await current_user.create_deck(
         session=session, deck_data=deck_data

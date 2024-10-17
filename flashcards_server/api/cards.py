@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from flashcards_server.database import (
     get_async_session,
@@ -41,23 +41,9 @@ class RelatedCard(BaseModel):
     question_context_facts: List[FactRead]
     answer_context_facts: List[FactRead]
     tags: List[TagRead]
-
-    class Config:
-        orm_mode = True
-
-
-class RelatedCard(BaseModel):
-    id: UUID
-    deck_id: UUID
-    question: FactRead
-    answer: FactRead
-    question_context_facts: List[FactRead]
-    answer_context_facts: List[FactRead]
-    tags: List[TagRead]
     relationship: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CardRead(BaseModel):
@@ -70,8 +56,7 @@ class CardRead(BaseModel):
     tags: List[TagRead]
     related: Optional[List[RelatedCard]]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Review(BaseModel):
@@ -81,8 +66,7 @@ class Review(BaseModel):
     algorithm: str
     datetime: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 async def valid_card(
@@ -183,9 +167,13 @@ async def create_card(
 
     if tags:
         for tag in tags:
-            tag_object = await TagModel.get_by_name_async(session=session, name=tag["name"])
+            tag_object = await TagModel.get_by_name_async(
+                session=session, name=tag["name"]
+            )
             if not tag_object:
-                tag_object = await TagModel.create_async(session=session, name=tag["name"])
+                tag_object = await TagModel.create_async(
+                    session=session, name=tag["name"]
+                )
             new_card.assign_tag(session=session, tag_id=tag_object.id)
 
     if question_context:
@@ -275,7 +263,7 @@ async def assign_tag_to_card(
     card = await valid_card(
         session=session, user=current_user, deck_id=deck_id, card_id=card_id
     )
-    tag = await TagModel.get_by_name_async(session=session, name=tag["name"])
+    tag = await TagModel.get_by_name_async(session=session, name=tag_name)
     if not tag:
         tag = await TagModel.create_async(session=session, name=tag_name)
     card.assign_tag(session=session, tag_id=tag.id)
@@ -300,7 +288,7 @@ async def remove_tag_from_card(
     card = await valid_card(
         session=session, user=current_user, deck_id=deck_id, card_id=card_id
     )
-    tag = await TagModel.get_by_name_async(session=session, name=tag["name"])
+    tag = await TagModel.get_by_name_async(session=session, name=tag_name)
     if not tag:
         raise HTTPException(status_code=404, detail=f"Tag '{tag_name}' doesn't exist.")
     card.remove_tag(session=session, tag_id=tag.id)
@@ -364,7 +352,9 @@ async def remove_question_context_from_card(
     card.remove_question_context(session=session, fact_id=fact.id)
 
 
-@router.put("/{deck_id}/cards/{card_id}/context/answer/{fact_id}", response_model=CardRead)
+@router.put(
+    "/{deck_id}/cards/{card_id}/context/answer/{fact_id}", response_model=CardRead
+)
 async def assign_answer_context_to_card(
     deck_id: UUID,
     card_id: UUID,
@@ -421,7 +411,7 @@ async def remove_answer_context_from_card(
 
 
 @router.put("/{deck_id}/cards/{card_id}/related", response_model=CardRead)
-async def assign_tag_to_card(
+async def assign_card_to_card(
     deck_id: UUID,
     card_id: UUID,
     related_card_id: UUID,
@@ -441,8 +431,12 @@ async def assign_tag_to_card(
     card = await valid_card(
         session=session, user=current_user, deck_id=deck_id, card_id=card_id
     )
-    card.assign_related_card_async(session=session, card_id=related_card_id, relationship=relationship)
-    card = await get_card(deck_id=deck_id, card_id=card_id, current_user=current_user, session=session)
+    card.assign_related_card_async(
+        session=session, card_id=related_card_id, relationship=relationship
+    )
+    card = await get_card(
+        deck_id=deck_id, card_id=card_id, current_user=current_user, session=session
+    )
     return card
 
 
@@ -467,8 +461,12 @@ async def remove_related_card(
     card = await valid_card(
         session=session, user=current_user, deck_id=deck_id, card_id=card_id
     )
-    card.remove_related_card_async(session=session, card_id=related_card_id, relationship=relationship)
-    card = await get_card(deck_id=deck_id, card_id=card_id, current_user=current_user, session=session)
+    card.remove_related_card_async(
+        session=session, card_id=related_card_id, relationship=relationship
+    )
+    card = await get_card(
+        deck_id=deck_id, card_id=card_id, current_user=current_user, session=session
+    )
     return card
 
 
@@ -486,5 +484,7 @@ async def delete_card(
     :param card_id: the id of the card to delete
     :returns: None
     """
-    await valid_card(session=session, user=current_user, deck_id=deck_id, card_id=card_id)
+    await valid_card(
+        session=session, user=current_user, deck_id=deck_id, card_id=card_id
+    )
     CardModel.delete_async(session=session, object_id=card_id)
