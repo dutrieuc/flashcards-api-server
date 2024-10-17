@@ -166,5 +166,5 @@ async def delete_deck(
     :param deck_id: the id of the deck to remove
     :returns: None
     """
-    valid_deck(session=session, user=current_user, deck_id=deck_id)
+    await valid_deck(session=session, user=current_user, deck_id=deck_id)
     await current_user.delete_deck(session=session, deck_id=deck_id)

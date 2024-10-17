@@ -88,3 +88,34 @@ def test_patch_deck(session: Session, client: TestClient, chemistry_deck):
     assert response.status_code == 200
     assert response.json()["name"] == deck_patch.name
     assert response.json()["description"] == description
+
+
+def test_patch_deck_not_owned(
+    session: Session, another_client: TestClient, chemistry_deck
+):
+    deck_patch = decks.DeckPatch(name="Biochemistry")
+    response = another_client.patch(
+        f"/decks/{chemistry_deck.id}", json=deck_patch.model_dump()
+    )
+    assert response.status_code == 404
+
+
+def test_delete_deck(session: Session, client: TestClient, chemistry_deck):
+    response = client.delete(f"/decks/{chemistry_deck.id}")
+    assert response.status_code == 200
+
+    response = client.get(f"/decks/{chemistry_deck.id}")
+    assert response.status_code == 404
+
+
+def test_delete_deck_not_owned(
+    session: Session, another_client: TestClient, chemistry_deck
+):
+    response = another_client.delete(f"/decks/{chemistry_deck.id}")
+    assert response.status_code == 404
+
+
+def test_delete_deck_logged_out(
+    session: Session, logged_out_client: TestClient, chemistry_deck
+):
+    assert 401 == logged_out_client.delete(f"/decks/{chemistry_deck.id}").status_code
