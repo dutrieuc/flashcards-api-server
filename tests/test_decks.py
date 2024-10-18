@@ -1,34 +1,7 @@
-import pytest_asyncio
-
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from flashcards_server.api import decks
-from flashcards_server.database import User
-
-
-@pytest_asyncio.fixture(name="biology_deck", scope="function")
-async def biology_deck(session: Session, user: User):
-    deck_1 = decks.DeckCreate(
-        name="Biology",
-        description="biology cards",
-        algorithm="random",
-        parameters={},  # TODO test with values, make optionnal
-        tags=[],
-    )
-    return await decks.create_deck(deck=deck_1, current_user=user, session=session)
-
-
-@pytest_asyncio.fixture(name="chemistry_deck", scope="function")
-async def chemistry_deck(session: Session, user: User):
-    deck_2 = decks.DeckCreate(
-        name="Chemistry",
-        description="Chemistry cards",
-        algorithm="random",
-        parameters={},
-        tags=[],
-    )
-    return await decks.create_deck(deck=deck_2, current_user=user, session=session)
 
 
 def test_endpoints_are_protected(logged_out_client: TestClient):
