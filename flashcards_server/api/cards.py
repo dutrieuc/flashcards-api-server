@@ -1,10 +1,9 @@
 from typing import Any, List, Optional
-
 from uuid import UUID
 from datetime import datetime
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from pydantic import BaseModel, ConfigDict
 
 from flashcards_server.database import (
@@ -29,8 +28,8 @@ class CardCreate(BaseModel):
 
 
 class CardPatch(BaseModel):
-    question_id: Optional[UUID]
-    answer_id: Optional[UUID]
+    question_id: Optional[UUID] = None
+    answer_id: Optional[UUID] = None
 
 
 class RelatedCard(BaseModel):
@@ -54,7 +53,7 @@ class CardRead(BaseModel):
     question_context_facts: List[FactRead]
     answer_context_facts: List[FactRead]
     tags: List[TagRead]
-    related: Optional[List[RelatedCard]]
+    related_cards: Optional[List[RelatedCard]]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -80,7 +79,7 @@ async def valid_card(
     :returns: the card, if all check passes.
     :raises HTTPException if any check fails
     """
-    valid_deck(session=session, user=user, deck_id=deck_id)
+    await valid_deck(session=session, user=user, deck_id=deck_id)
     card = await CardModel.get_one_async(session=session, object_id=card_id)
     if card is None or card.deck_id != deck_id:
         raise HTTPException(
@@ -105,20 +104,16 @@ async def get_cards(
     :param limit: for pagination, maximum number of cards to return.
     :returns: List of cards.
     """
-    valid_deck(session=session, user=current_user, deck_id=deck_id)
+    await valid_deck(session=session, user=current_user, deck_id=deck_id)
     stmt = (
         select(CardModel)
+        .options(selectinload(CardModel.related_cards))
         .where(CardModel.deck_id == deck_id)
         .offset(offset)
         .limit(limit)
     )
     results = await session.scalars(stmt)
-    db_cards = results.all()
-    cards = []
-    for card in db_cards:
-        card.related = await card.related_cards_async(session)
-        cards.append(card)
-    return cards
+    return results
 
 
 @router.get("/{deck_id}/cards/{card_id}", response_model=CardRead)
@@ -156,9 +151,9 @@ async def create_card(
     :param card: the details of the new card.
     :returns: The new card
     """
-    valid_deck(session=session, user=current_user, deck_id=deck_id)
+    await valid_deck(session=session, user=current_user, deck_id=deck_id)
 
-    card_data = card.dict()
+    card_data = card.model_dump()
     card_data["deck_id"] = deck_id
     tags = card_data.pop("tags", [])
     question_context = card_data.pop("question_context_facts", [])
@@ -213,15 +208,13 @@ async def edit_card(
     :param new_card_data: the new details of the card. Can be partial.
     :returns: The modified card
     """
-    original_data = valid_card(session=session, deck_id=deck_id, card_id=card_id)
+    await valid_card(
+        session=session, user=current_user, deck_id=deck_id, card_id=card_id
+    )
+    update_data = new_card_data.model_dump(exclude_none=True)
 
-    update_data = new_card_data.dict(exclude_unset=True)
-    new_model = CardCreate(**vars(original_data)).copy(update=update_data)
-    new_model_data = {
-        key: value for key, value in new_model.dict().items() if value is not None
-    }
-    await CardModel.update_async(session=session, object_id=card_id, **new_model_data)
-    return CardModel.get_one_async(session=session, object_id=card_id)
+    await CardModel.update_async(session=session, object_id=card_id, **update_data)
+    return await CardModel.get_one_async(session=session, object_id=card_id)
 
 
 @router.get("/{deck_id}/cards/{card_id}/reviews", response_model=List[Review])
@@ -487,4 +480,4 @@ async def delete_card(
     await valid_card(
         session=session, user=current_user, deck_id=deck_id, card_id=card_id
     )
-    CardModel.delete_async(session=session, object_id=card_id)
+    await CardModel.delete_async(session=session, object_id=card_id)

@@ -42,7 +42,7 @@ class FactRead(FactBase):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     tags: List[TagRead]
-    related: Optional[List[RelatedFact]]
+    related_facts: Optional[List[RelatedFact]]
 
 
 router = APIRouter(
@@ -140,8 +140,9 @@ async def create_fact(
     :param fact: the details of the new fact.
     :returns: The new fact
     """
-    fact_data = fact.dict()
+    fact_data = fact.model_dump()
     tags = fact_data.pop("tags", [])
+    fact_data.pop("related", [])  # TODO actually use it (or remove it)
     new_fact = await FactModel.create_async(session=session, **fact_data)
 
     for tag in tags:
